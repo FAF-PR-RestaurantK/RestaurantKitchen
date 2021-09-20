@@ -15,6 +15,6 @@ COPY . .
 
 RUN go build -o main ./src/main.go
 
-EXPOSE 56565
+EXPOSE 56566
 
 CMD ["./main"]

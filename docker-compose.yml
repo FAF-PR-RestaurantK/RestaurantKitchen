@@ -2,12 +2,12 @@ version: '3'
 
 services:
 
-    dinner_hall:
+    kitchen:
         build:
             context: .
             dockerfile: Dockerfile
         ports:
-            -   "56565:56565"
+            -   "56566:56566"
         restart: unless-stopped
         networks:
             -   restaurant

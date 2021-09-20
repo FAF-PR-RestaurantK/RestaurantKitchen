@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/vivk-FAF-PR16-2/RestaurantKitchen/src/configuration"
-	"github.com/vivk-FAF-PR16-2/RestaurantKitchen/src/distributionRout"
-	"github.com/vivk-FAF-PR16-2/RestaurantKitchen/src/item"
-	"github.com/vivk-FAF-PR16-2/RestaurantKitchen/src/singleton"
+	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/configuration"
+	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/item"
+	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/orderRout"
+	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/singleton"
 	"io"
 	"log"
 	"net/http"
@@ -23,9 +23,9 @@ func main() {
 
 	singleton.Singleton().Set("items", container)
 
-	http.HandleFunc(conf.DistributionRout, distributionRout.DistributionHandler)
+	http.HandleFunc(conf.OrderRout, orderRout.OrderHandler)
 
-	err := http.ListenAndServe(conf.DinnerHallAddr, nil)
+	err := http.ListenAndServe(conf.KitchenAddr, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
