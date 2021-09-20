@@ -1,1 +1,1 @@
-module github.com/vivk-FAF-PR16-2/RestaurantKitchen
+module github.com/FAF-PR-RestaurantK/RestaurantKitchen
