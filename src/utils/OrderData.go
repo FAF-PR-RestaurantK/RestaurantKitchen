@@ -1,11 +1,11 @@
 package utils
 
 type OrderData struct {
-	OrderID    int     `json:"order_id"`
-	TableID    int     `json:"table_id"`
-	WaiterID   int     `json:"waiter_id"`
+	OrderID    int     `json:"order-id"`
+	TableID    int     `json:"table-id"`
+	WaiterID   int     `json:"waiter-id"`
 	Items      []int   `json:"items"`
 	Priority   int     `json:"priority"`
-	MaxWait    float32 `json:"max_wait"`
-	PickUpTime int64   `json:"pick_up_time"`
+	MaxWait    float32 `json:"max-wait"`
+	PickUpTime int64   `json:"pick-up-time"`
 }
