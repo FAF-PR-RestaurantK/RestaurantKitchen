@@ -1,7 +1,23 @@
 {
-	"dinnerHallAddr"	: "127.0.0.1:56565",
-	"kitchenAddr"		: "127.0.0.1:56566",
+	"dinner_hall_addr"	: "127.0.0.1:56565",
+	"kitchen_addr"		: "127.0.0.1:56566",
 
-	"distributionRout"	: "/distribution",
-	"orderRout"			: "/order"
+	"distribution_rout"	: "/distribution",
+	"order_rout"		: "/order",
+
+	"time_unit_mod"		: 1,
+
+	"table_count"		: 6,
+	"waiter_count"		: 3,
+
+	"min_make_order"	: 2,
+	"max_make_order"	: 4,
+
+	"min_order_items"	: 1,
+	"max_order_items"	: 4,
+
+	"min_priority"		: 1,
+	"max_priority"		: 5,
+
+	"max_wait_multiplier"	: 1.3
 }
