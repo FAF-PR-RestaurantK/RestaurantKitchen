@@ -91,11 +91,10 @@ func (cook *Cook) Run() {
 func (cook *Cook) update() {
 	timeNow := time.Now().Unix()
 
-	deltaTime := timeNow - cook.lastTime
 	cook.lastTime = timeNow
 
 	for _, thread := range cook.threads {
-		thread.Update(deltaTime)
+		thread.Update()
 	}
 }
 
