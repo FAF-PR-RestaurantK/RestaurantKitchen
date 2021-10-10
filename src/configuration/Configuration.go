@@ -22,4 +22,6 @@ type Configuration struct {
 	MaxPriority int `json:"max_priority"`
 
 	MaxWaitMultiplier float32 `json:"max_wait_multiplier"`
+
+	OrderListLen int `json:"order_list_len"`
 }
