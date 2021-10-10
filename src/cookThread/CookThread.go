@@ -4,20 +4,14 @@ import (
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/configuration"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/icook"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/item"
-	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/queue"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/utils"
 	"time"
 )
 
-type cookDetails struct {
-	item   *item.Item
-	detail *utils.CookingDetails
-}
-
 type CookThread struct {
 	cook             icook.ICook
-	queue            *queue.Queue
-	currentItem      *cookDetails
+	queue            *ThreadCookDetailsHeap
+	currentItem      *ThreadCookDetails
 	currentItemTimer <-chan time.Time
 
 	queueLeftTime time.Duration
@@ -26,7 +20,7 @@ type CookThread struct {
 func New(cook icook.ICook) *CookThread {
 	return &CookThread{
 		cook:          cook,
-		queue:         queue.New(),
+		queue:         &ThreadCookDetailsHeap{},
 		currentItem:   nil,
 		queueLeftTime: 0,
 	}
@@ -53,13 +47,9 @@ func (thread *CookThread) PushItem(item *item.Item, detail *utils.CookingDetails
 	item.Duration = time.Duration(item.PreparationTime) * configuration.TimeUnit
 	thread.queueLeftTime += item.Duration
 
-	cookDetail := cookDetails{
+	cookDetail := ThreadCookDetails{
 		item:   item,
 		detail: detail,
-	}
-
-	if thread.queue == nil {
-		thread.queue = queue.New()
 	}
 
 	thread.queue.Push(cookDetail)
@@ -92,14 +82,13 @@ func (thread *CookThread) popItem() {
 		return
 	}
 
-	cookDetail := thread.queue.Pop().(cookDetails)
+	cookDetail := thread.queue.Pop().(ThreadCookDetails)
 
 	itemElem := cookDetail.item
 
-	itemDuration := time.Duration(itemElem.PreparationTime) * configuration.TimeUnit
-	thread.queueLeftTime -= itemDuration
+	thread.queueLeftTime -= itemElem.Duration
 
-	thread.currentItemTimer = time.After(itemDuration)
+	thread.currentItemTimer = time.After(itemElem.Duration)
 	thread.currentItem = &cookDetail
 }
 

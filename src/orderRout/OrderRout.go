@@ -2,7 +2,6 @@ package orderRout
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/orderManager"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/utils"
 	"io"
@@ -14,8 +13,6 @@ func OrderHandler(writer http.ResponseWriter, request *http.Request) {
 	var response string
 
 	jsonData, err := io.ReadAll(request.Body)
-	str := string(jsonData)
-	fmt.Println(str)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
@@ -29,5 +26,5 @@ func OrderHandler(writer http.ResponseWriter, request *http.Request) {
 
 	http.Error(writer, response, http.StatusOK)
 
-	orderManager.PushOrder(&data)
+	orderManager.PushOrder(utils.NewDistData(&data))
 }

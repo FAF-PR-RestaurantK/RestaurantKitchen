@@ -14,6 +14,9 @@ const (
 func SendDistribution(order *utils.DistributionData, conf *configuration.Configuration) {
 	addr := HttpAddr + conf.DinnerHallAddr + conf.DistributionRout
 
+	fmt.Print("send: ")
+	fmt.Println(order)
+
 	jsonBuff, err := json.Marshal(*order)
 	if err != nil {
 		fmt.Println(err)

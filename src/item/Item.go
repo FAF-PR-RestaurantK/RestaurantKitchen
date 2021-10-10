@@ -10,6 +10,7 @@ type Item struct {
 	CookingApparatus CookingApparatus `json:"cooking-apparatus"`
 
 	Duration time.Duration
+	Priority int
 }
 
 func GetItem(id int, items []Item) *Item {

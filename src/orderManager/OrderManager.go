@@ -1,6 +1,7 @@
 package orderManager
 
 import (
+	"fmt"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/configuration"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/cook"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/cookThread"
@@ -9,6 +10,7 @@ import (
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/sendRequest"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/utils"
 	"math"
+	"sync"
 	"time"
 )
 
@@ -16,18 +18,21 @@ type OrderManager struct {
 	queue  *queue.Queue
 	orders map[*utils.OrderData][]bool
 
-	distArr []*utils.DistributionData
+	workingOrders []*utils.DistributionData
 
 	cooks []*cookThread.CookThread
 	items []item.Item
 	conf  *configuration.Configuration
+
+	buffer chan bool
+	lock   sync.Mutex
 }
 
 // region Static methods
 
 var instance *OrderManager
 
-func new() *OrderManager {
+func newOrderManager() *OrderManager {
 	return &OrderManager{
 		queue:  queue.New(),
 		orders: make(map[*utils.OrderData][]bool),
@@ -36,7 +41,7 @@ func new() *OrderManager {
 
 func Get() *OrderManager {
 	if instance == nil {
-		instance = new()
+		instance = newOrderManager()
 	}
 
 	return instance
@@ -61,12 +66,25 @@ func SetItems(items []item.Item) {
 func SetConf(conf *configuration.Configuration) {
 	manager := Get()
 	manager.conf = conf
-	manager.distArr = make([]*utils.DistributionData, 0, conf.TableCount)
+
+	manager.workingOrders = make([]*utils.DistributionData, 0, conf.TableCount)
+	manager.buffer = make(chan bool, conf.OrderListLen)
 }
 
-func PushOrder(order *utils.OrderData) {
+func PushOrder(order *utils.DistributionData) {
 	manager := Get()
-	manager.queue.Push(order)
+
+	manager.lock.Lock()
+
+	manager.buffer <- false
+
+	fmt.Print("get: ")
+	fmt.Println(order)
+
+	order.SetReceivedTime(time.Now())
+	manager.Provide(order)
+
+	manager.lock.Unlock()
 }
 
 // endregion
@@ -79,42 +97,50 @@ func (manager *OrderManager) Run() {
 	}
 }
 
+func (manager *OrderManager) Provide(data *utils.DistributionData) {
+	manager.workingOrders = append(manager.workingOrders, data)
+
+	manager.setupCookingDetails(data)
+
+	for i := range data.CookingDetails {
+		manager.sendItemCook(&data.CookingDetails[i], data.Priority)
+	}
+}
+
 // endregion
 
 // region Private methods
 
 func (manager *OrderManager) update() {
-	if len(manager.distArr) != 0 {
-		for i, dist := range manager.distArr {
+	manager.outputDataProvide()
+}
+
+func (manager *OrderManager) outputDataProvide() {
+	if len(manager.workingOrders) != 0 {
+		for i, data := range manager.workingOrders {
 			count := 0
-			for _, detail := range dist.CookingDetails {
+			for _, detail := range data.CookingDetails {
 				if detail.ReadyStatus == true {
 					count += 1
 				}
 			}
 
-			if count == len(dist.CookingDetails) {
-				sendRequest.SendDistribution(dist, manager.conf)
-				manager.distArr = manager.remove(manager.distArr, i)
+			if count == len(data.CookingDetails) {
+				manager.getPreparedTime(data)
+				sendRequest.SendDistribution(data, manager.conf)
+				manager.workingOrders = manager.remove(manager.workingOrders, i)
+				<-manager.buffer
 				return
 			}
 		}
 	}
+}
 
-	if manager.queue.Len() != 0 {
-		for manager.queue.Len() != 0 {
-			order := manager.queue.Pop().(*utils.OrderData)
-
-			dist := utils.NewDistData(order)
-			manager.distArr = append(manager.distArr, dist)
-
-			manager.setupCookingDetails(dist)
-
-			for i, _ := range dist.CookingDetails {
-				manager.sendItemCook(&dist.CookingDetails[i])
-			}
-		}
-	}
+func (manager *OrderManager) getPreparedTime(data *utils.DistributionData) {
+	receivedTime := data.GetReceivedTime()
+	preparedTime := time.Since(receivedTime)
+	cookingTime := preparedTime / configuration.TimeUnit
+	data.CookingTime = int(cookingTime)
 }
 
 func (manager *OrderManager) setupCookingDetails(data *utils.DistributionData) {
@@ -127,29 +153,30 @@ func (manager *OrderManager) setupCookingDetails(data *utils.DistributionData) {
 	}
 }
 
-func (manager *OrderManager) sendItemCook(cookingDetails *utils.CookingDetails) {
+func (manager *OrderManager) sendItemCook(cookingDetails *utils.CookingDetails, priority int) {
 	itemElem := item.GetItem(cookingDetails.FoodID, manager.items)
 	cooker := manager.getCook(itemElem)
+	itemElem.Priority = priority
 
 	cooker.PushItem(itemElem, cookingDetails)
 
 }
 
 func (manager *OrderManager) getCook(item *item.Item) *cookThread.CookThread {
-	var cook *cookThread.CookThread = nil
+	var currentCookThread *cookThread.CookThread = nil
 	var minTime time.Duration = math.MaxInt64
 
 	for _, thread := range manager.cooks {
 		if thread.GetProficiency() >= item.Complexity {
 			timeLeft := thread.GetTimeLeft()
 			if timeLeft < minTime {
-				cook = thread
+				currentCookThread = thread
 				minTime = timeLeft
 			}
 		}
 	}
 
-	return cook
+	return currentCookThread
 }
 
 func (manager *OrderManager) remove(slice []*utils.DistributionData, s int) []*utils.DistributionData {
