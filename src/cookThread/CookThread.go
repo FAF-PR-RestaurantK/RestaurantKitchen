@@ -9,17 +9,16 @@ import (
 	"time"
 )
 
-var zeroDuration time.Duration = time.Duration(0)
-
 type cookDetails struct {
 	item   *item.Item
 	detail *utils.CookingDetails
 }
 
 type CookThread struct {
-	cook        icook.ICook
-	queue       *queue.Queue
-	currentItem *cookDetails
+	cook             icook.ICook
+	queue            *queue.Queue
+	currentItem      *cookDetails
+	currentItemTimer <-chan time.Time
 
 	queueLeftTime time.Duration
 }
@@ -51,10 +50,10 @@ func (thread *CookThread) GetTimeLeft() time.Duration {
 // region Public methods
 
 func (thread *CookThread) PushItem(item *item.Item, detail *utils.CookingDetails) {
-	item.Duration = time.Duration(item.PreparationTime)
+	item.Duration = time.Duration(item.PreparationTime) * configuration.TimeUnit
 	thread.queueLeftTime += item.Duration
 
-	cookDetail := &cookDetails{
+	cookDetail := cookDetails{
 		item:   item,
 		detail: detail,
 	}
@@ -66,21 +65,20 @@ func (thread *CookThread) PushItem(item *item.Item, detail *utils.CookingDetails
 	thread.queue.Push(cookDetail)
 }
 
-func (thread *CookThread) Update(deltaTime int64) {
+func (thread *CookThread) Update() {
 	if thread.currentItem == nil {
 		thread.popItem()
 		return
 	}
 
-	if thread.currentItem.item.Duration > zeroDuration {
-		thread.currentItem.item.Duration -= time.Duration(deltaTime) * configuration.TimeUnit
-		return
-	}
-
-	if thread.currentItem.item.Duration <= zeroDuration {
+	select {
+	case <-thread.currentItemTimer:
 		thread.currentItem.detail.CookID = thread.cook.GetId()
 		thread.currentItem.detail.ReadyStatus = true
 		thread.popItem()
+		return
+	default:
+		return
 	}
 }
 
@@ -94,13 +92,15 @@ func (thread *CookThread) popItem() {
 		return
 	}
 
-	cookDetail := thread.queue.Pop().(*cookDetails)
+	cookDetail := thread.queue.Pop().(cookDetails)
 
 	itemElem := cookDetail.item
 
-	itemDuration := time.Duration(itemElem.PreparationTime)
+	itemDuration := time.Duration(itemElem.PreparationTime) * configuration.TimeUnit
 	thread.queueLeftTime -= itemDuration
-	thread.currentItem = cookDetail
+
+	thread.currentItemTimer = time.After(itemDuration)
+	thread.currentItem = &cookDetail
 }
 
 // endregion
