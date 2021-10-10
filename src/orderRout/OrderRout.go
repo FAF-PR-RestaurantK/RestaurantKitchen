@@ -29,5 +29,5 @@ func OrderHandler(writer http.ResponseWriter, request *http.Request) {
 
 	http.Error(writer, response, http.StatusOK)
 
-	orderManager.PushOrder(&data)
+	orderManager.PushOrder(utils.NewDistData(&data))
 }

@@ -1,5 +1,7 @@
 package utils
 
+import "time"
+
 type DistributionData struct {
 	OrderID        int              `json:"order-id"`
 	TableID        int              `json:"table-id"`
@@ -10,6 +12,8 @@ type DistributionData struct {
 	PickUpTime     int64            `json:"pick-up-time"`
 	CookingTime    int              `json:"cooking-time"`
 	CookingDetails []CookingDetails `json:"cooking-details"`
+
+	receivedTime time.Time
 }
 
 func NewDistData(order *OrderData) *DistributionData {
@@ -23,4 +27,12 @@ func NewDistData(order *OrderData) *DistributionData {
 		PickUpTime:     order.PickUpTime,
 		CookingDetails: make([]CookingDetails, 0, len(order.Items)),
 	}
+}
+
+func (data *DistributionData) SetReceivedTime(value time.Time) {
+	data.receivedTime = value
+}
+
+func (data *DistributionData) GetReceivedTime() time.Time {
+	return data.receivedTime
 }

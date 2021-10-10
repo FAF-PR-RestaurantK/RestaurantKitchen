@@ -86,10 +86,9 @@ func (thread *CookThread) popItem() {
 
 	itemElem := cookDetail.item
 
-	itemDuration := time.Duration(itemElem.PreparationTime) * configuration.TimeUnit
-	thread.queueLeftTime -= itemDuration
+	thread.queueLeftTime -= itemElem.Duration
 
-	thread.currentItemTimer = time.After(itemDuration)
+	thread.currentItemTimer = time.After(itemElem.Duration)
 	thread.currentItem = &cookDetail
 }
 

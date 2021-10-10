@@ -64,8 +64,10 @@ func SetConf(conf *configuration.Configuration) {
 	manager.workingOrders = make([]*utils.DistributionData, 0, conf.TableCount)
 }
 
-func PushOrder(order *utils.OrderData) {
+func PushOrder(order *utils.DistributionData) {
 	manager := Get()
+
+	order.SetReceivedTime(time.Now())
 	manager.queue.Push(order)
 }
 
@@ -84,28 +86,42 @@ func (manager *OrderManager) Run() {
 // region Private methods
 
 func (manager *OrderManager) update() {
+	manager.outputDataProvide()
+	manager.inputDataProvide()
+}
+
+func (manager *OrderManager) outputDataProvide() {
 	if len(manager.workingOrders) != 0 {
-		for i, dist := range manager.workingOrders {
+		for i, data := range manager.workingOrders {
 			count := 0
-			for _, detail := range dist.CookingDetails {
+			for _, detail := range data.CookingDetails {
 				if detail.ReadyStatus == true {
 					count += 1
 				}
 			}
 
-			if count == len(dist.CookingDetails) {
-				sendRequest.SendDistribution(dist, manager.conf)
+			if count == len(data.CookingDetails) {
+				manager.getPreparedTime(data)
+				sendRequest.SendDistribution(data, manager.conf)
 				manager.workingOrders = manager.remove(manager.workingOrders, i)
 				return
 			}
 		}
 	}
+}
 
+func (manager *OrderManager) getPreparedTime(data *utils.DistributionData) {
+	receivedTime := data.GetReceivedTime()
+	preparedTime := time.Since(receivedTime)
+	cookingTime := preparedTime / configuration.TimeUnit
+	data.CookingTime = int(cookingTime)
+}
+
+func (manager *OrderManager) inputDataProvide() {
 	if manager.queue.Len() != 0 {
 		for manager.queue.Len() != 0 {
-			order := manager.queue.Pop().(*utils.OrderData)
+			data := manager.queue.Pop().(*utils.DistributionData)
 
-			data := utils.NewDistData(order)
 			manager.workingOrders = append(manager.workingOrders, data)
 
 			manager.setupCookingDetails(data)
