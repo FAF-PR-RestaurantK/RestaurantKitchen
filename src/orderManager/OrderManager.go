@@ -1,6 +1,7 @@
 package orderManager
 
 import (
+	"fmt"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/configuration"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/cook"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/cookThread"
@@ -9,6 +10,7 @@ import (
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/sendRequest"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/utils"
 	"math"
+	"sync"
 	"time"
 )
 
@@ -21,6 +23,9 @@ type OrderManager struct {
 	cooks []*cookThread.CookThread
 	items []item.Item
 	conf  *configuration.Configuration
+
+	buffer chan bool
+	lock   sync.Mutex
 }
 
 // region Static methods
@@ -61,14 +66,25 @@ func SetItems(items []item.Item) {
 func SetConf(conf *configuration.Configuration) {
 	manager := Get()
 	manager.conf = conf
+
 	manager.workingOrders = make([]*utils.DistributionData, 0, conf.TableCount)
+	manager.buffer = make(chan bool, conf.OrderListLen)
 }
 
 func PushOrder(order *utils.DistributionData) {
 	manager := Get()
 
+	manager.lock.Lock()
+
+	manager.buffer <- false
+
+	fmt.Print("get: ")
+	fmt.Println(order)
+
 	order.SetReceivedTime(time.Now())
-	manager.queue.Push(order)
+	manager.Provide(order)
+
+	manager.lock.Unlock()
 }
 
 // endregion
@@ -81,13 +97,22 @@ func (manager *OrderManager) Run() {
 	}
 }
 
+func (manager *OrderManager) Provide(data *utils.DistributionData) {
+	manager.workingOrders = append(manager.workingOrders, data)
+
+	manager.setupCookingDetails(data)
+
+	for i := range data.CookingDetails {
+		manager.sendItemCook(&data.CookingDetails[i], data.Priority)
+	}
+}
+
 // endregion
 
 // region Private methods
 
 func (manager *OrderManager) update() {
 	manager.outputDataProvide()
-	manager.inputDataProvide()
 }
 
 func (manager *OrderManager) outputDataProvide() {
@@ -104,6 +129,7 @@ func (manager *OrderManager) outputDataProvide() {
 				manager.getPreparedTime(data)
 				sendRequest.SendDistribution(data, manager.conf)
 				manager.workingOrders = manager.remove(manager.workingOrders, i)
+				<-manager.buffer
 				return
 			}
 		}
@@ -115,22 +141,6 @@ func (manager *OrderManager) getPreparedTime(data *utils.DistributionData) {
 	preparedTime := time.Since(receivedTime)
 	cookingTime := preparedTime / configuration.TimeUnit
 	data.CookingTime = int(cookingTime)
-}
-
-func (manager *OrderManager) inputDataProvide() {
-	if manager.queue.Len() != 0 {
-		for manager.queue.Len() != 0 {
-			data := manager.queue.Pop().(*utils.DistributionData)
-
-			manager.workingOrders = append(manager.workingOrders, data)
-
-			manager.setupCookingDetails(data)
-
-			for i := range data.CookingDetails {
-				manager.sendItemCook(&data.CookingDetails[i], data.Priority)
-			}
-		}
-	}
 }
 
 func (manager *OrderManager) setupCookingDetails(data *utils.DistributionData) {
