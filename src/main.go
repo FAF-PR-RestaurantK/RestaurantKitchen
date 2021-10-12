@@ -7,7 +7,6 @@ import (
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/item"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/orderManager"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/orderRout"
-	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/singleton"
 	"io"
 	"log"
 	"net/http"
@@ -21,17 +20,13 @@ const (
 	CooksPath = "./conf/cooks.json"
 )
 
-var CONF *configuration.Configuration
-
 func main() {
 	conf := GetConf()
 	container := GetItemContainer()
 	cooks := GetCooks()
 
-	singleton.Singleton().Set("items", container)
-	singleton.Singleton().Set("conf", &conf)
-
-	configuration.TimeUnit = time.Duration(1)
+	timeUnitMillisecondMultiplier := time.Duration(conf.TimeUnitMillisecondMultiplier)
+	configuration.TimeUnit = time.Millisecond * timeUnitMillisecondMultiplier
 
 	for i := range cooks {
 		cooks[i].Id = i
