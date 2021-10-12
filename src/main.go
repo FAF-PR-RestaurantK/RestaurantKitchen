@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/configuration"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/cook"
+	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/cookingApparatus"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/item"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/orderManager"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/orderRout"
@@ -16,9 +17,10 @@ import (
 )
 
 const (
-	ConfPath  = "./conf/configuration.json"
-	ItemsPath = "./conf/items.json"
-	CooksPath = "./conf/cooks.json"
+	ConfPath             = "./conf/configuration.json"
+	ItemsPath            = "./conf/items.json"
+	CooksPath            = "./conf/cooks.json"
+	CookingApparatusPath = "./conf/cookingApparatus.json"
 )
 
 var CONF *configuration.Configuration
@@ -27,6 +29,13 @@ func main() {
 	conf := GetConf()
 	container := GetItemContainer()
 	cooks := GetCooks()
+	cookingApparatuses := GetCookingApparatus()
+
+	ok := cookingApparatuses.Check(container)
+	if ok == false {
+		log.Fatalf("exit: %s\n", "Item container uses unknown `cooking apparatus`")
+		return
+	}
 
 	singleton.Singleton().Set("items", container)
 	singleton.Singleton().Set("conf", &conf)
@@ -123,4 +132,33 @@ func GetCooks() []*cook.Cook {
 	}
 
 	return cooks
+}
+
+func GetCookingApparatus() cookingApparatus.Container {
+	var apparatusArray []cookingApparatus.CookingApparatus
+
+	cookingApparatusFile, _ := os.Open(CookingApparatusPath)
+	defer func(itemListFile *os.File) {
+		_ = itemListFile.Close()
+	}(cookingApparatusFile)
+
+	jsonData, err := io.ReadAll(cookingApparatusFile)
+	if err != nil {
+		log.Fatalf("exit: %s\n", err.Error())
+		return nil
+	}
+
+	err = json.Unmarshal(jsonData, &apparatusArray)
+	if err != nil {
+		log.Fatalf("exit: %s\n", err.Error())
+		return nil
+	}
+
+	apparatusMap := make(cookingApparatus.Container)
+
+	for i := range apparatusArray {
+		apparatusMap[apparatusArray[i].Key] = apparatusArray[i].Value
+	}
+
+	return apparatusMap
 }
