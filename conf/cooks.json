@@ -6,9 +6,15 @@
 		"catch-phrase": "Hey, panini head, are you listening to me?"
 	},
 	{
-		"rank": 3,
-		"proficiency": 3,
+		"rank": 1,
+		"proficiency": 2,
 		"name": "Ne Gordon Ramsay",
 		"catch-phrase": "Ne Hey, panini head, are you listening to me?"
+	},
+	{
+		"rank": 2,
+		"proficiency": 1,
+		"name": "Po4ti Gordon Ramsay",
+		"catch-phrase": "Po4ti Hey, panini head, are you listening to me?"
 	}
 ]
