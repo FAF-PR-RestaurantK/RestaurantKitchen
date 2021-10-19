@@ -5,6 +5,7 @@ import (
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/configuration"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/cook"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/cookingApparatus"
+	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/cookingApparatusMechanism"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/item"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/orderManager"
 	"github.com/FAF-PR-RestaurantK/RestaurantKitchen/src/orderRout"
@@ -30,12 +31,15 @@ func main() {
 	container := GetItemContainer()
 	cooks := GetCooks()
 	cookingApparatuses := GetCookingApparatus()
+	mechanisms := GetCookingApparatusMechanism(cookingApparatuses)
 
 	ok := cookingApparatuses.Check(container)
 	if ok == false {
 		log.Fatalf("exit: %s\n", "Item container uses unknown `cooking apparatus`")
 		return
 	}
+
+	cookingApparatusMechanism.Set(mechanisms)
 
 	singleton.Singleton().Set("items", container)
 	singleton.Singleton().Set("conf", &conf)
@@ -161,4 +165,18 @@ func GetCookingApparatus() cookingApparatus.Container {
 	}
 
 	return apparatusMap
+}
+
+func GetCookingApparatusMechanism(source cookingApparatus.Container) cookingApparatusMechanism.Container {
+	container := make(cookingApparatusMechanism.Container, 0)
+
+	for apparatus := range source {
+		count := source[apparatus]
+		for i := 0; i < count; i++ {
+			mechanism := cookingApparatusMechanism.New(apparatus)
+			container = append(container, mechanism)
+		}
+	}
+
+	return container
 }
